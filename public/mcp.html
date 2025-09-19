@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP 管理中心 - PicAgent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+
+        .terminal-container {
+            background: #0f172a;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .terminal-body {
+            height: calc(100% - 45px);
+        }
+
+        .checkbox-custom {
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.25rem;
+            background-color: white;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .checkbox-custom:checked {
+            background-color: #0f172a;
+            border-color: #0f172a;
+        }
+
+        .checkbox-custom:checked::after {
+            content: '✓';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.875rem;
+        }
+
+        .loading {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <div class="bg-white border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="/" class="text-gray-600 hover:text-gray-900">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                            </svg>
+                        </a>
+                        <div>
+                            <h1 class="text-2xl font-semibold text-gray-900">MCP 管理中心</h1>
+                            <p class="text-sm text-gray-500 mt-1">配置和管理 Model Context Protocol 服务</p>
+                        </div>
+                    </div>
+                    <button id="refresh-all" class="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors">
+                        刷新状态
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" style="height: calc(100vh - 150px);">
+                <!-- Left Panel: MCP Management -->
+                <div class="bg-white rounded-lg shadow-sm border overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-lg font-semibold text-gray-900">🎯 MCP 配置管理</h2>
+                            <span id="overall-status" class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                检测中...
+                            </span>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- jimeng-apicore -->
+                            <div class="border rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-lg">📦</span>
+                                        <span class="font-medium">jimeng-apicore</span>
+                                    </div>
+                                    <span id="apicore-status" class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+                                        检测中...
+                                    </span>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                                        <div class="flex gap-2">
+                                            <input 
+                                                type="password" 
+                                                id="apicore-key"
+                                                placeholder="sk-xxxxxxxxxxxxxxxx"
+                                                class="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                            <button onclick="togglePassword('apicore-key')" class="px-3 py-2 border rounded-lg hover:bg-gray-50">
+                                                👁️
+                                            </button>
+                                        </div>
+                                        <p class="mt-1 text-xs text-gray-500">
+                                            获取: <a href="https://api.apicore.ai" target="_blank" class="text-blue-600 hover:underline">api.apicore.ai</a>
+                                        </p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">输出目录</label>
+                                        <input 
+                                            type="text" 
+                                            id="apicore-dir"
+                                            placeholder="/Users/yourname/Pictures"
+                                            class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                    </div>
+                                    
+                                    <div class="flex gap-2 pt-2">
+                                        <button onclick="installMCP('jimeng-apicore')" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                                            安装/更新
+                                        </button>
+                                        <button onclick="removeMCP('jimeng-apicore')" class="px-3 py-1.5 border border-red-300 text-red-600 text-sm rounded hover:bg-red-50">
+                                            删除
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- jimeng-volcengine -->
+                            <div class="border rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-lg">📦</span>
+                                        <span class="font-medium">jimeng-volcengine</span>
+                                    </div>
+                                    <span id="volcengine-status" class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+                                        检测中...
+                                    </span>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                                        <div class="flex gap-2">
+                                            <input 
+                                                type="password" 
+                                                id="volcengine-key"
+                                                placeholder="sk-xxxxxxxxxxxxxxxx"
+                                                class="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                            <button onclick="togglePassword('volcengine-key')" class="px-3 py-2 border rounded-lg hover:bg-gray-50">
+                                                👁️
+                                            </button>
+                                        </div>
+                                        <p class="mt-1 text-xs text-gray-500">
+                                            获取: <a href="https://console.volcengine.com" target="_blank" class="text-blue-600 hover:underline">console.volcengine.com</a>
+                                        </p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">输出目录</label>
+                                        <input 
+                                            type="text" 
+                                            id="volcengine-dir"
+                                            placeholder="/Users/yourname/Pictures"
+                                            class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                    </div>
+                                    
+                                    <div class="flex gap-2 pt-2">
+                                        <button onclick="installMCP('jimeng-volcengine')" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                                            安装/更新
+                                        </button>
+                                        <button onclick="removeMCP('jimeng-volcengine')" class="px-3 py-1.5 border border-red-300 text-red-600 text-sm rounded hover:bg-red-50">
+                                            删除
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Help Section -->
+                            <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                                <h3 class="text-sm font-medium text-blue-900 mb-2">💡 使用说明</h3>
+                                <ol class="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+                                    <li>点击"安装/更新"安装MCP包</li>
+                                    <li>输入API Key和输出目录</li>
+                                    <li>点击"保存配置"应用设置</li>
+                                    <li>右侧终端会显示执行过程</li>
+                                    <li>配置成功后可在Claude Desktop中使用</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Terminal -->
+                <div class="bg-white rounded-lg shadow-sm border" style="display: flex; flex-direction: column;">
+                    <div class="p-6 flex-1" style="display: flex; flex-direction: column;">
+                        <div class="flex items-center mb-4">
+                            <svg class="w-5 h-5 mr-2 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <h2 class="text-lg font-semibold text-gray-900">命令执行终端</h2>
+                        </div>
+                        <div class="terminal-container flex-1">
+                            <div class="bg-gray-900 px-4 py-2 flex items-center justify-between border-b border-gray-800">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                    <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                </div>
+                                <span class="text-xs text-gray-400">MCP Terminal</span>
+                            </div>
+                            <div class="terminal-body p-2">
+                                <div id="terminal"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script>
+        const socket = io();
+        let term;
+        let fitAddon;
+        let mcpStatuses = [];
+        
+        // Load saved config from localStorage
+        function loadSavedConfig() {
+            const savedConfig = localStorage.getItem('mcp-config');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    if (config.apicore) {
+                        document.getElementById('apicore-key').value = config.apicore.apiKey || '';
+                        document.getElementById('apicore-dir').value = config.apicore.outputDir || '';
+                    }
+                    if (config.volcengine) {
+                        document.getElementById('volcengine-key').value = config.volcengine.apiKey || '';
+                        document.getElementById('volcengine-dir').value = config.volcengine.outputDir || '';
+                    }
+                } catch (e) {
+                    console.error('Failed to load saved config:', e);
+                }
+            }
+        }
+        
+        // Save config to localStorage
+        function saveConfigToLocal() {
+            const config = {
+                apicore: {
+                    apiKey: document.getElementById('apicore-key').value,
+                    outputDir: document.getElementById('apicore-dir').value
+                },
+                volcengine: {
+                    apiKey: document.getElementById('volcengine-key').value,
+                    outputDir: document.getElementById('volcengine-dir').value
+                }
+            };
+            localStorage.setItem('mcp-config', JSON.stringify(config));
+        }
+
+        // Initialize terminal
+        function initializeTerminal() {
+            term = new Terminal({
+                theme: {
+                    background: '#0f172a',
+                    foreground: '#e5e7eb',
+                    cursor: '#ffffff'
+                },
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                fontSize: 13,
+                lineHeight: 1.2,
+                cursorBlink: true
+            });
+            
+            fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+            
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+            
+            socket.emit('terminal:create', {
+                cols: term.cols,
+                rows: term.rows
+            });
+            
+            term.onData((data) => {
+                socket.emit('terminal:write', data);
+            });
+            
+            window.addEventListener('resize', () => {
+                fitAddon.fit();
+                socket.emit('terminal:resize', {
+                    cols: term.cols,
+                    rows: term.rows
+                });
+            });
+        }
+
+        // Socket event handlers
+        socket.on('connect', () => {
+            initializeTerminal();
+            // Load saved config from localStorage first
+            loadSavedConfig();
+            checkAllStatus();
+        });
+
+        socket.on('terminal:data', (data) => {
+            term.write(data);
+        });
+
+        socket.on('terminal:created', () => {
+            // 终端已创建，不需要额外的欢迎信息
+        });
+
+        // MCP functions
+        function checkAllStatus() {
+            socket.emit('mcp:check');
+        }
+
+        function installMCP(name) {
+            // 获取用户输入的配置
+            const config = {};
+            
+            if (name === 'jimeng-apicore') {
+                const keyInput = document.getElementById('apicore-key');
+                const dirInput = document.getElementById('apicore-dir');
+                
+                // 必须提供 API Key
+                if (!keyInput || !keyInput.value) {
+                    alert('请先输入 API Key 再安装！');
+                    return;
+                }
+                
+                config.apiKey = keyInput.value;
+                config.outputDir = dirInput.value || '~/Pictures';
+                
+            } else if (name === 'jimeng-volcengine') {
+                const keyInput = document.getElementById('volcengine-key');
+                const dirInput = document.getElementById('volcengine-dir');
+                
+                // 必须提供 API Key
+                if (!keyInput || !keyInput.value) {
+                    alert('请先输入 API Key 再安装！');
+                    return;
+                }
+                
+                config.apiKey = keyInput.value;
+                config.outputDir = dirInput.value || '~/Pictures';
+            }
+            
+            // 发送安装命令，包含用户配置
+            socket.emit('mcp:install', name, config);
+        }
+
+        function removeMCP(name) {
+            if (confirm(`确定要删除 ${name} 吗？`)) {
+                // 直接发送删除命令，不在终端显示额外信息
+                socket.emit('mcp:remove', name);
+            }
+        }
+
+        function togglePassword(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        // Status update handlers
+        socket.on('mcp:status', (statuses) => {
+            mcpStatuses = statuses;
+            updateStatusDisplay(statuses);
+        });
+
+        function updateStatusDisplay(statuses) {
+            const apicoreStatus = statuses.find(s => s.name === 'jimeng-apicore');
+            const volcengineStatus = statuses.find(s => s.name === 'jimeng-volcengine');
+            
+            // Update individual status badges
+            updateBadge('apicore-status', apicoreStatus);
+            updateBadge('volcengine-status', volcengineStatus);
+            
+            // Update overall status
+            const overallBadge = document.getElementById('overall-status');
+            const hasValidMCP = (apicoreStatus?.installed && apicoreStatus?.apiKeyValid) || 
+                               (volcengineStatus?.installed && volcengineStatus?.apiKeyValid);
+            
+            if (hasValidMCP) {
+                overallBadge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700';
+                overallBadge.textContent = '✅ 已就绪';
+            } else {
+                overallBadge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700';
+                overallBadge.textContent = '⚠️ 需配置';
+            }
+        }
+
+        function updateBadge(id, status) {
+            const badge = document.getElementById(id);
+            if (!badge) return;
+            
+            if (!status) {
+                badge.className = 'px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600';
+                badge.textContent = '未检测';
+            } else if (status.installed && status.apiKeyValid) {
+                badge.className = 'px-2 py-1 text-xs rounded-full bg-green-100 text-green-700';
+                badge.textContent = '✅ 已就绪';
+            } else if (status.installed) {
+                badge.className = 'px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700';
+                badge.textContent = '⚠️ 需配置';
+            } else {
+                badge.className = 'px-2 py-1 text-xs rounded-full bg-red-100 text-red-700';
+                badge.textContent = '❌ 未安装';
+            }
+        }
+
+        // Result handlers
+        socket.on('mcp:install:result', (result) => {
+            // 延迟1秒后更新状态，给Claude时间更新配置
+            setTimeout(() => {
+                checkAllStatus();
+            }, 1000);
+        });
+
+        socket.on('mcp:remove:result', (result) => {
+            if (result.success) {
+                // 删除成功后，立即在本地更新状态为未安装
+                const mcpName = result.mcpName || '';
+                if (mcpName === 'jimeng-apicore') {
+                    updateBadge('apicore-status', { installed: false, configured: false, apiKeyValid: false });
+                } else if (mcpName === 'jimeng-volcengine') {
+                    updateBadge('volcengine-status', { installed: false, configured: false, apiKeyValid: false });
+                }
+            }
+            // 延迟2秒后重新检查实际状态
+            setTimeout(() => {
+                checkAllStatus();
+            }, 2000);
+        });
+
+        // Refresh button
+        document.getElementById('refresh-all').addEventListener('click', () => {
+            // 直接刷新状态，不显示提示
+            checkAllStatus();
+        });
+
+        // Auto refresh every 10 seconds
+        setInterval(checkAllStatus, 10000);
+        
+        // Add event listeners to save config on input change
+        window.addEventListener('DOMContentLoaded', () => {
+            const inputs = ['apicore-key', 'apicore-dir', 'volcengine-key', 'volcengine-dir'];
+            inputs.forEach(id => {
+                const elem = document.getElementById(id);
+                if (elem) {
+                    elem.addEventListener('blur', saveConfigToLocal);
+                }
+            });
+            
+            // Load saved config on page load
+            loadSavedConfig();
+        });
+    </script>
+</body>
+</html>

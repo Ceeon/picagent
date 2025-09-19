@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PicAgent - 智能图片生成工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 222.2 47.4% 11.2%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96.1%;
+            --secondary-foreground: 222.2 47.4% 11.2%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96.1%;
+            --accent-foreground: 222.2 47.4% 11.2%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 222.2 84% 4.9%;
+            --radius: 0.5rem;
+        }
+        
+        * {
+            border-color: hsl(var(--border));
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+
+        .terminal-container {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+
+        .terminal-body {
+            height: 600px;
+        }
+
+        .drag-active {
+            border-color: rgb(59 130 246);
+            background-color: rgb(239 246 255);
+        }
+
+        .checkbox-custom {
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.25rem;
+            background-color: white;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .checkbox-custom:checked {
+            background-color: #0f172a;
+            border-color: #0f172a;
+        }
+
+        .checkbox-custom:checked::after {
+            content: '✓';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <div class="bg-white border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-semibold text-gray-900">Agent × MCP : 即梦工作站</h1>
+                        <p class="text-sm text-gray-500 mt-1">通过 Claude Code 和 MCP 进行智能创作</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm text-gray-600">MCP状态:</span>
+                        <span id="mcp-status-badge" class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">检测中...</span>
+                        <a href="/mcp" class="px-4 py-1.5 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800 transition-colors">
+                            MCP设置
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Left Panel: GUI Configuration -->
+                <div class="bg-white rounded-lg shadow-sm border">
+                    <div class="p-6">
+
+                        <!-- Prompt Input -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">提示词</label>
+                            <textarea 
+                                id="prompt-input"
+                                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                rows="3"
+                                placeholder="描述你想生成的图片内容..."
+                            ></textarea>
+                        </div>
+
+                        <!-- Reference Image -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <span class="inline-flex items-center">
+                                    🖼️ 参考图片
+                                </span>
+                            </label>
+                            <div id="image-upload" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                                <p class="mt-2 text-sm text-gray-500">拖拽或点击上传图片</p>
+                                <input type="file" id="image-input" accept="image/*" class="hidden">
+                            </div>
+                        </div>
+
+                        <!-- Image Size -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">📐 图片尺寸</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button class="size-btn px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors" data-size="1:1">
+                                    1:1
+                                </button>
+                                <button class="size-btn px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors bg-gray-900 text-white" data-size="16:9">
+                                    16:9
+                                </button>
+                                <button class="size-btn px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors" data-size="9:16">
+                                    9:16
+                                </button>
+                                <button class="size-btn px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors" data-size="3:2">
+                                    3:2
+                                </button>
+                                <button class="size-btn px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors" data-size="2:3">
+                                    2:3
+                                </button>
+                                <button class="size-btn px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors" data-size="4:3">
+                                    4:3
+                                </button>
+                                <button class="size-btn px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors" data-size="3:4">
+                                    3:4
+                                </button>
+                                <button class="size-btn px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors" data-size="21:9">
+                                    21:9
+                                </button>
+                                <button class="size-btn px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors" data-size="custom">
+                                    自定义
+                                </button>
+                            </div>
+                            <div id="custom-size" class="hidden mt-2 flex gap-2">
+                                <input type="number" id="custom-width" placeholder="宽度" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                                <span class="self-center text-gray-500">×</span>
+                                <input type="number" id="custom-height" placeholder="高度" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                            </div>
+                        </div>
+
+
+                        <!-- Action Buttons -->
+                        <div class="flex gap-3">
+                            <button id="generate-btn" class="flex-1 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors font-medium">
+                                生成图片
+                            </button>
+                            <button id="reset-btn" class="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors">
+                                重置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Terminal -->
+                <div class="bg-white rounded-lg shadow-sm border">
+                    <div class="p-6">
+                        <div class="flex items-center mb-6">
+                            <svg class="w-5 h-5 mr-2 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <h2 class="text-lg font-semibold text-gray-900">Claude 智能终端</h2>
+                        </div>
+                        <div class="terminal-container">
+                            <div class="bg-gray-100 px-4 py-2 flex items-center justify-between border-b border-gray-200">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                    <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                </div>
+                                <span class="text-xs text-gray-600">Terminal</span>
+                            </div>
+                            <div class="terminal-body p-2">
+                                <div id="terminal"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MCP Manager Modal -->
+        <div id="mcp-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden">
+                <div class="px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold">MCP 配置管理</h3>
+                </div>
+                <div class="p-6 overflow-y-auto max-h-[70vh]">
+                    <!-- MCP Configurations -->
+                    <div class="space-y-6">
+                        <!-- APICore Configuration -->
+                        <div class="border rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-medium flex items-center">
+                                    <span class="text-xl mr-2">📦</span>
+                                    jimeng-apicore
+                                </h4>
+                                <span id="apicore-status" class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">未检测</span>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                                    <input 
+                                        type="password" 
+                                        id="apicore-api-key" 
+                                        placeholder="sk-xxxxxxxxxxxxxxxx"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        获取API Key: <a href="https://api.apicore.ai" target="_blank" class="text-blue-600 hover:underline">https://api.apicore.ai</a>
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">输出目录</label>
+                                    <input 
+                                        type="text" 
+                                        id="apicore-output-dir" 
+                                        placeholder="/Users/yourname/Pictures"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">图片保存位置，留空使用默认目录</p>
+                                </div>
+                                <div class="flex gap-2 mt-3">
+                                    <button onclick="saveMCPConfig('apicore')" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">
+                                        保存配置
+                                    </button>
+                                    <button onclick="testMCPConfig('apicore')" class="px-3 py-1.5 border text-sm rounded hover:bg-gray-50 transition-colors">
+                                        测试连接
+                                    </button>
+                                    <button onclick="installMCP('jimeng-apicore')" class="px-3 py-1.5 border text-sm rounded hover:bg-gray-50 transition-colors">
+                                        安装/更新
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VolcEngine Configuration -->
+                        <div class="border rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-medium flex items-center">
+                                    <span class="text-xl mr-2">📦</span>
+                                    jimeng-volcengine
+                                </h4>
+                                <span id="volcengine-status" class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">未检测</span>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                                    <input 
+                                        type="password" 
+                                        id="volcengine-api-key" 
+                                        placeholder="sk-xxxxxxxxxxxxxxxx"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        获取API Key: <a href="https://console.volcengine.com" target="_blank" class="text-blue-600 hover:underline">https://console.volcengine.com</a>
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">输出目录</label>
+                                    <input 
+                                        type="text" 
+                                        id="volcengine-output-dir" 
+                                        placeholder="/Users/yourname/Pictures"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">图片保存位置，留空使用默认目录</p>
+                                </div>
+                                <div class="flex gap-2 mt-3">
+                                    <button onclick="saveMCPConfig('volcengine')" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">
+                                        保存配置
+                                    </button>
+                                    <button onclick="testMCPConfig('volcengine')" class="px-3 py-1.5 border text-sm rounded hover:bg-gray-50 transition-colors">
+                                        测试连接
+                                    </button>
+                                    <button onclick="installMCP('jimeng-volcengine')" class="px-3 py-1.5 border text-sm rounded hover:bg-gray-50 transition-colors">
+                                        安装/更新
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h5 class="font-medium text-sm text-gray-700 mb-2">📌 配置说明</h5>
+                        <ol class="text-xs text-gray-600 space-y-1 list-decimal list-inside">
+                            <li>点击"安装/更新"安装对应的MCP</li>
+                            <li>输入API Key和输出目录</li>
+                            <li>点击"保存配置"保存到本地配置文件</li>
+                            <li>点击"测试连接"验证配置是否正确</li>
+                            <li>配置成功后即可使用即梦AI生成图片</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t flex justify-between">
+                    <button id="mcp-view-config" class="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors text-sm">
+                        查看配置文件
+                    </button>
+                    <div class="flex space-x-3">
+                        <button id="mcp-close-btn" class="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors">
+                            关闭
+                        </button>
+                        <button id="mcp-refresh-btn" class="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors">
+                            刷新状态
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="/js/app.js"></script>
+    <script src="/js/terminal.js"></script>
+    <script src="/js/gui-config.js"></script>
+    <script src="/js/mcp-manager.js"></script>
+    <script>
+        // Size buttons handling
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.size-btn').forEach(b => {
+                    b.classList.remove('bg-gray-900', 'text-white');
+                    b.classList.add('hover:bg-gray-50');
+                });
+                e.target.classList.remove('hover:bg-gray-50');
+                e.target.classList.add('bg-gray-900', 'text-white');
+                
+                const size = e.target.dataset.size;
+                if (size === 'custom') {
+                    document.getElementById('custom-size').classList.remove('hidden');
+                } else {
+                    document.getElementById('custom-size').classList.add('hidden');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
