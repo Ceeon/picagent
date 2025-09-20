@@ -47,6 +47,11 @@ function initializeTerminal() {
         socket.emit('terminal:write', data);
     });
     
+    // 点击终端区域时聚焦
+    document.getElementById('terminal').addEventListener('click', () => {
+        term.focus();
+    });
+    
     window.addEventListener('resize', () => {
         fitAddon.fit();
         socket.emit('terminal:resize', {
@@ -58,7 +63,10 @@ function initializeTerminal() {
 
 socket.on('terminal:created', (data) => {
     console.log('Terminal created:', data.sessionId);
-    // 终端已创建，不需要额外的欢迎信息
+    // 终端创建后自动启动claude
+    setTimeout(() => {
+        socket.emit('terminal:write', 'claude\r');
+    }, 500);
 });
 
 socket.on('terminal:data', (data) => {

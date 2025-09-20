@@ -1,4 +1,5 @@
 const socket = io();
+window.socket = socket; // 设为全局变量，让其他地方可以使用
 
 let mcpStatuses = [];
 

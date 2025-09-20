@@ -141,11 +141,17 @@ export function setupWebSocket(io: SocketIOServer): void {
       }
 
       try {
-        const command = buildJimengCommand(params);
-        socket.emit('jimeng:command', command);
+        // 构建发送给Agent的提示
+        const agentPrompt = buildAgentPrompt(params);
+        socket.emit('jimeng:command', agentPrompt);
         
-        const output = await session.execute(command);
-        socket.emit('jimeng:result', { success: true, output });
+        // 将提示直接发送到终端执行
+        session.write(agentPrompt + '\n');
+        
+        socket.emit('jimeng:result', { 
+          success: true, 
+          message: '提示词已输入，请在终端按Enter执行' 
+        });
       } catch (error: any) {
         socket.emit('jimeng:error', { message: error.message });
       }
@@ -266,6 +272,23 @@ export function setupWebSocket(io: SocketIOServer): void {
       terminalManager.destroySession(socket.id);
     });
   });
+}
+
+function buildAgentPrompt(params: any): string {
+  const {
+    prompt,
+    userRequirements
+  } = params;
+
+  // 构建给Agent的专业提示词模板
+  let agentPrompt = `你是一个AI绘画大师，结合风格和用户需求，生成绘图提示词，调用即梦MCP作图\n\n`;
+  agentPrompt += `风格：${prompt}\n\n`;
+  
+  if (userRequirements) {
+    agentPrompt += `用户需求：${userRequirements}\n`;
+  }
+  
+  return agentPrompt;
 }
 
 function buildJimengCommand(params: any): string {

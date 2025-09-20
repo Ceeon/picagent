@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handsontable 数据编辑器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.1.0/dist/handsontable.full.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.1.0/dist/handsontable.full.min.js"></script>
+    <style>
+        .hot-container {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .handsontable .ht_master .wtHolder {
+            background: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen p-6">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">📊 Handsontable 数据编辑器</h1>
+                        <p class="text-sm text-gray-600 mt-1">像Excel一样编辑封面案例数据</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button id="load-data" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            📥 从服务器加载
+                        </button>
+                        <button id="add-batch" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            ➕ 批量添加10行
+                        </button>
+                        <button id="import-json" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                            📂 导入JSON
+                        </button>
+                        <button id="export-js" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+                            💾 保存到服务器
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 隐藏的文件输入 -->
+                <input type="file" id="file-input" accept=".json" style="display: none;">
+                
+                <!-- 操作提示 -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 class="font-medium text-blue-800 mb-2">💡 使用技巧：</h3>
+                    <div class="text-sm text-blue-700 grid grid-cols-2 gap-2">
+                        <div>• Tab/Enter: 快速切换单元格</div>
+                        <div>• Ctrl+C/V: 复制粘贴（支持Excel）</div>
+                        <div>• 右键菜单: 插入/删除行</div>
+                        <div>• 自动保存: 修改后自动存储到本地</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Handsontable Container -->
+            <div class="bg-white rounded-lg shadow-sm border p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">数据表格</h2>
+                    <div class="text-sm text-gray-500">
+                        <span id="row-count">0</span> 行数据
+                    </div>
+                </div>
+                
+                <div id="handsontable-container" class="hot-container" style="width: 100%; height: 600px;"></div>
+            </div>
+            
+            <!-- 数据预览 -->
+            <div class="bg-white rounded-lg shadow-sm border p-6 mt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">JSON数据预览</h2>
+                    <button id="toggle-preview" class="px-3 py-1 text-sm border rounded hover:bg-gray-50">
+                        显示/隐藏
+                    </button>
+                </div>
+                <pre id="json-preview" class="bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto text-xs max-h-60 hidden"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let hot;
+        const STORAGE_KEY = 'coverTemplatesData';
+        
+        // 初始化Handsontable
+        function initHandsontable() {
+            const container = document.getElementById('handsontable-container');
+            
+            // 初始数据
+            const data = [
+                {id: '1', name: '自然风景', coverImage: '/covers/1.jpg', prompt: '风景摄影风格，展现大自然的壮美景色。包含山脉、湖泊、森林等自然元素，色彩层次丰富，光影自然，16:9横版构图。photorealistic, landscape photography, natural lighting, cinematic, high resolution'},
+                {id: '2', name: '人物肖像', coverImage: '/covers/2.jpg', prompt: '专业人像摄影风格，注重面部细节和情感表达。采用浅景深虚化背景，突出主体人物，光影柔和自然。3:4竖版构图。portrait photography, professional lighting, bokeh background, detailed facial features'}
+            ];
+            
+            hot = new Handsontable(container, {
+                data: data,
+                colHeaders: ['ID', '案例名称', '封面图片', '完整提示词'],
+                columns: [
+                    {
+                        data: 'id',
+                        type: 'text',
+                        width: 60,
+                        className: 'text-center font-mono'
+                    },
+                    {
+                        data: 'name',
+                        type: 'text',
+                        width: 120
+                    },
+                    {
+                        data: 'coverImage',
+                        type: 'text',
+                        width: 150,
+                        className: 'text-xs text-blue-600'
+                    },
+                    {
+                        data: 'prompt',
+                        type: 'text',
+                        width: 400,
+                        renderer: function(instance, td, row, col, prop, value, cellProperties) {
+                            Handsontable.renderers.TextRenderer.apply(this, arguments);
+                            td.style.whiteSpace = 'pre-wrap';
+                            td.style.fontSize = '12px';
+                            td.style.lineHeight = '1.4';
+                            td.style.padding = '8px';
+                            
+                            // 限制显示长度
+                            if (value && value.length > 100) {
+                                td.innerHTML = value.substring(0, 100) + '...';
+                                td.title = value; // 完整内容作为tooltip
+                            }
+                        }
+                    }
+                ],
+                rowHeaders: true,
+                width: '100%',
+                height: 600,
+                licenseKey: 'non-commercial-and-evaluation',
+                stretchH: 'last',
+                manualRowResize: true,
+                manualColumnResize: true,
+                contextMenu: {
+                    items: {
+                        'row_above': {
+                            name: '在上方插入行'
+                        },
+                        'row_below': {
+                            name: '在下方插入行'
+                        },
+                        'remove_row': {
+                            name: '删除行'
+                        },
+                        'separator1': Handsontable.plugins.ContextMenu.SEPARATOR,
+                        'copy': {
+                            name: '复制'
+                        },
+                        'cut': {
+                            name: '剪切'
+                        }
+                    }
+                },
+                afterChange: function(changes, source) {
+                    if (source !== 'loadData') {
+                        autoSave();
+                        updatePreview();
+                        updateRowCount();
+                    }
+                },
+                afterCreateRow: function() {
+                    autoSave();
+                    updateRowCount();
+                },
+                afterRemoveRow: function() {
+                    autoSave();
+                    updateRowCount();
+                }
+            });
+            
+            updateRowCount();
+            updatePreview();
+        }
+        
+        // 自动保存到服务器（可选，暂时关闭避免频繁请求）
+        function autoSave() {
+            // 暂时关闭自动保存，避免每次修改都请求服务器
+            // 用户需要手动点击"导出JS文件"按钮来保存
+            updatePreview();
+            console.log('数据已更新（需手动保存到服务器）');
+        }
+        
+        // 更新行数显示
+        function updateRowCount() {
+            const data = hot.getData();
+            const validRows = data.filter(row => row[0]).length;
+            document.getElementById('row-count').textContent = validRows;
+        }
+        
+        // 更新JSON预览
+        function updatePreview() {
+            const data = hot.getData();
+            const jsonData = {};
+            
+            data.forEach(row => {
+                if (row[0]) {
+                    jsonData[row[0]] = {
+                        name: row[1] || '',
+                        coverImage: row[2] || `/covers/${row[0]}.jpg`,
+                        prompt: row[3] || ''
+                    };
+                }
+            });
+            
+            document.getElementById('json-preview').textContent = JSON.stringify(jsonData, null, 2);
+        }
+        
+        // 从服务器加载数据
+        async function loadExistingData() {
+            try {
+                // 从服务器获取数据
+                const response = await fetch('/api/covers');
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    const jsonData = result.data;
+                    const data = Object.keys(jsonData).map(id => ({
+                        id: id,
+                        name: jsonData[id].name,
+                        coverImage: jsonData[id].coverImage,
+                        prompt: jsonData[id].prompt
+                    }));
+                    
+                    if (data.length > 0) {
+                        hot.loadData(data);
+                        updateRowCount();
+                        updatePreview();
+                        alert(`✅ 已从服务器加载 ${data.length} 条数据`);
+                    } else {
+                        alert('❌ 服务器上没有数据');
+                    }
+                } else {
+                    alert('❌ 加载失败：' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                alert('❌ 无法连接到服务器');
+            }
+        }
+        
+        // 批量添加行
+        function addBatchRows() {
+            const currentData = hot.getData();
+            const lastId = Math.max(...currentData.filter(row => row[0]).map(row => parseInt(row[0]) || 0), 0);
+            
+            const newRows = [];
+            for (let i = 1; i <= 10; i++) {
+                const newId = lastId + i;
+                newRows.push({
+                    id: newId.toString(),
+                    name: `新案例 ${newId}`,
+                    coverImage: `/covers/${newId}.jpg`,
+                    prompt: '请在此填写完整的提示词，包含描述、尺寸、风格等信息...'
+                });
+            }
+            
+            const allData = [...hot.getSourceData(), ...newRows];
+            hot.loadData(allData);
+            
+            alert(`✅ 已添加 10 行新数据`);
+        }
+        
+        // 导入JSON文件
+        function importJSON() {
+            document.getElementById('file-input').click();
+        }
+        
+        // 处理文件导入
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    const data = Object.keys(jsonData).map(id => ({
+                        id: id,
+                        name: jsonData[id].name || '',
+                        coverImage: jsonData[id].coverImage || `/covers/${id}.jpg`,
+                        prompt: jsonData[id].prompt || ''
+                    }));
+                    
+                    hot.loadData(data);
+                    updateRowCount();
+                    updatePreview();
+                    alert(`✅ 成功导入 ${data.length} 条数据`);
+                } catch (error) {
+                    alert('❌ JSON格式错误：' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        // 保存到服务器
+        async function exportJSFile() {
+            const data = hot.getData();
+            const jsonData = {};
+            
+            data.forEach(row => {
+                if (row[0]) {
+                    jsonData[row[0]] = {
+                        name: row[1] || '',
+                        coverImage: row[2] || `/covers/${row[0]}.jpg`,
+                        prompt: row[3] || ''
+                    };
+                }
+            });
+            
+            if (Object.keys(jsonData).length === 0) {
+                alert('❌ 没有可保存的数据');
+                return;
+            }
+            
+            try {
+                // 发送数据到服务器
+                const response = await fetch('/api/covers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ data: jsonData })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`✅ ${result.message}\n数据已保存到服务器！`);
+                } else {
+                    alert('❌ 保存失败：' + result.error);
+                }
+            } catch (error) {
+                console.error('保存失败:', error);
+                alert('❌ 无法保存到服务器');
+            }
+        }
+        
+        // 切换预览显示
+        function togglePreview() {
+            const preview = document.getElementById('json-preview');
+            preview.classList.toggle('hidden');
+        }
+        
+        // 事件绑定
+        document.addEventListener('DOMContentLoaded', function() {
+            initHandsontable();
+            
+            document.getElementById('load-data').addEventListener('click', loadExistingData);
+            document.getElementById('add-batch').addEventListener('click', addBatchRows);
+            document.getElementById('import-json').addEventListener('click', importJSON);
+            document.getElementById('export-js').addEventListener('click', exportJSFile);
+            document.getElementById('toggle-preview').addEventListener('click', togglePreview);
+            document.getElementById('file-input').addEventListener('change', handleFileImport);
+        });
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 {
-  "name": "picagent",
-  "version": "1.0.0",
-  "description": "智能Agent操控中心 - 通过Web UI调用Claude Code和MCP",
+  "name": "@chengfeng2025/picagent-jimeng",
+  "version": "1.0.1",
+  "description": "Agent × MCP : 即梦工作站 - AI图片生成智能工作台",
   "main": "dist/server.js",
   "bin": {
     "picagent": "./bin/picagent.js"
@@ -10,11 +10,27 @@
     "start": "node dist/server.js",
     "build": "tsc",
     "dev": "ts-node src/server.ts",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": ["claude", "mcp", "jimeng", "ai", "image-generation"],
-  "author": "",
+  "files": [
+    "dist/",
+    "public/",
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": ["claude", "mcp", "jimeng", "ai", "image-generation", "agent", "ai-art"],
+  "author": "chengfeng",
   "license": "MIT",
+  "homepage": "https://github.com/yourusername/picagent",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/picagent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/picagent/issues"
+  },
   "engines": {
     "node": ">=16.0.0"
   },
