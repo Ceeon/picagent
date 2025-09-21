@@ -75,7 +75,7 @@ router.get('/gallery', async (req, res) => {
       .map((file: string) => ({
         name: file,
         path: path.join(outputDir, file),
-        url: `/api/image/${encodeURIComponent(file)}`
+        url: `/api/image/${file}`
       }));
     
     // 按修改时间排序（最新的在前）

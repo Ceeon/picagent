@@ -574,7 +574,7 @@
                         // Add outputDir parameter to image URL
                         img.src = `${image.url}${image.url.includes('?') ? '&' : '?'}outputDir=${encodeURIComponent(outputDir)}`;
                         img.alt = image.name;
-                        img.className = 'w-full h-32 object-cover rounded-lg';
+                        img.className = 'w-full h-32 object-contain rounded-lg bg-gray-50';
                         img.loading = 'lazy';
                         
                         // 添加时间标签
@@ -594,7 +594,7 @@
                         
                         // 点击查看大图
                         imgContainer.addEventListener('click', () => {
-                            window.open(image.url, '_blank');
+                            window.open(image.url + (image.url.includes('?') ? '&' : '?') + 'outputDir=' + encodeURIComponent(outputDir), '_blank');
                         });
                     });
                     
