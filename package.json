@@ -1,6 +1,6 @@
 {
   "name": "@chengfeng2025/picagent-jimeng",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Agent × MCP : 即梦工作站 - AI图片生成智能工作台",
   "main": "dist/server.js",
   "bin": {
@@ -11,12 +11,15 @@
     "build": "tsc",
     "dev": "ts-node src/server.ts",
     "watch": "tsc --watch",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postinstall": "node scripts/postinstall.js"
   },
   "files": [
     "dist/",
     "public/",
     "bin/",
+    "scripts/",
+    "templates/",
     "README.md",
     "LICENSE"
   ],
