@@ -357,8 +357,11 @@
         }
         
         // 事件绑定
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             initHandsontable();
+            
+            // 自动加载服务器数据
+            await loadExistingData();
             
             document.getElementById('load-data').addEventListener('click', loadExistingData);
             document.getElementById('add-batch').addEventListener('click', addBatchRows);

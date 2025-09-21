@@ -403,8 +403,8 @@
                 
                 html += `
                     <div class="case-item cursor-pointer border-2 border-gray-200 rounded-lg p-3 hover:border-blue-500 transition-colors" data-case="${id}">
-                        <div class="aspect-video bg-gradient-to-br ${colorClass} rounded mb-2 flex items-center justify-center">
-                            <img src="${template.coverImage}" alt="${template.name}" class="w-full h-full object-cover rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="bg-gradient-to-br ${colorClass} rounded mb-2 flex items-center justify-center overflow-hidden" style="aspect-ratio: 2.35/1;">
+                            <img src="${template.coverImage}" alt="${template.name}" class="w-full h-full object-contain rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                             <span class="text-white text-sm hidden">${id}</span>
                         </div>
                         <p class="text-xs text-gray-600 text-center">${template.name}</p>
