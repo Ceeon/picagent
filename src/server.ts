@@ -39,6 +39,7 @@ app.get('/mcp', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/mcp.html'));
 });
 
+
 // 查找可用端口
 async function findAvailablePort(startPort: number): Promise<number> {
   return new Promise((resolve) => {

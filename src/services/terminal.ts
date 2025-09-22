@@ -1,4 +1,25 @@
-import * as pty from '@homebridge/node-pty-prebuilt-multiarch';
+// 自动选择可用的 PTY 实现
+let pty: any = null;
+const ptyModules = [
+  '@lydell/node-pty',
+  '@homebridge/node-pty-prebuilt-multiarch',
+  'node-pty'
+];
+
+for (const moduleName of ptyModules) {
+  try {
+    pty = require(moduleName);
+    console.log(`✅ 使用终端模块: ${moduleName}`);
+    break;
+  } catch (e) {
+    // 继续尝试下一个
+  }
+}
+
+if (!pty) {
+  console.error('❌ 未找到可用的 PTY 模块');
+  throw new Error('无法加载终端模块，请检查安装');
+}
 import { EventEmitter } from 'events';
 import os from 'os';
 
@@ -8,7 +29,7 @@ export interface TerminalSize {
 }
 
 export class TerminalSession extends EventEmitter {
-  private ptyProcess: pty.IPty;
+  private ptyProcess: any; // PTY 进程实例
   private sessionId: string;
   private isActive: boolean = true;
 
