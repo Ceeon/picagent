@@ -1,6 +1,6 @@
 {
   "name": "@chengfeng2025/picagent-jimeng",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Agent × MCP : 即梦工作站 - AI图片生成智能工作台",
   "main": "dist/server.js",
   "bin": {
@@ -23,7 +23,15 @@
     "README.md",
     "LICENSE"
   ],
-  "keywords": ["claude", "mcp", "jimeng", "ai", "image-generation", "agent", "ai-art"],
+  "keywords": [
+    "claude",
+    "mcp",
+    "jimeng",
+    "ai",
+    "image-generation",
+    "agent",
+    "ai-art"
+  ],
   "author": "chengfeng",
   "license": "MIT",
   "homepage": "https://github.com/yourusername/picagent",
@@ -38,17 +46,17 @@
     "node": ">=16.0.0"
   },
   "dependencies": {
+    "@homebridge/node-pty-prebuilt-multiarch": "^0.11.14",
+    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "socket.io": "^4.6.1",
-    "node-pty": "^1.0.0",
     "open": "^8.4.2",
-    "cors": "^2.8.5"
+    "socket.io": "^4.6.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.0",
-    "@types/cors": "^2.8.17",
-    "typescript": "^5.3.3",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   }
 }
