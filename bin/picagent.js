@@ -8,6 +8,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 // 获取项目根目录
 const rootDir = path.resolve(__dirname, '..');
@@ -17,8 +18,12 @@ const serverFile = path.join(rootDir, 'dist', 'server.js');
 if (!fs.existsSync(serverFile)) {
   console.log('⚙️  首次运行，正在构建项目...');
   
+  // Windows 需要特殊处理
+  const isWindows = os.platform() === 'win32';
+  const npmCmd = isWindows ? 'npm.cmd' : 'npm';
+
   // 运行构建
-  const build = spawn('npm', ['run', 'build'], {
+  const build = spawn(npmCmd, ['run', 'build'], {
     cwd: rootDir,
     stdio: 'inherit',
     shell: true
@@ -43,10 +48,15 @@ function startServer() {
 ╚════════════════════════════════════════════╝
 `);
 
+  // Windows 需要特殊处理
+  const isWindows = os.platform() === 'win32';
+  const nodeCmd = isWindows ? 'node.exe' : 'node';
+
   // 启动服务器
-  const server = spawn('node', [serverFile], {
+  const server = spawn(nodeCmd, [serverFile], {
     cwd: rootDir,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    shell: isWindows // Windows 需要 shell: true
   });
 
   // 处理退出信号

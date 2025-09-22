@@ -1,6 +1,6 @@
 {
   "name": "@chengfeng2025/picagent-jimeng",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Agent × MCP : 即梦工作站 - AI图片生成智能工作台",
   "main": "dist/server.js",
   "bin": {
