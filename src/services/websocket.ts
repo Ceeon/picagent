@@ -78,46 +78,63 @@ export function setupWebSocket(io: SocketIOServer): void {
       try {
         const session = terminalManager.getSession(socket.id);
         if (session) {
-          // 构建完整的 JSON 配置
-          let configJson = '';
+          // 构建提示词，让 Claude 自己执行配置命令
+          let prompt = `请帮我配置 ${mcpName} MCP，执行以下命令：\n\n`;
+
           if (mcpName === 'jimeng-apicore') {
-            const env: any = {};
-            
-            // API Key 是必需的
-            if (config?.apiKey) {
-              env.APICORE_API_KEY = config.apiKey;
+            // 确保 API Key 存在
+            if (!config?.apiKey) {
+              socket.emit('mcp:install:result', { success: false, message: '请先输入 API Key' });
+              return;
             }
-            
-            // 输出目录，如果没有提供则使用默认值
-            env.JIMENG_OUTPUT_DIR = config?.outputDir || (process.env.HOME + '/Pictures');
-            
-            configJson = JSON.stringify({
-              command: "uvx",
-              args: ["jimeng-mcp-apicore"],
-              env: env
-            });
+
+            // 使用用户提供的目录或默认值
+            const outputDir = config.outputDir || '~/Pictures';
+
+            // 构建完整的命令
+            prompt += `claude mcp add-json jimeng-apicore '{\n`;
+            prompt += `  "command": "uvx",\n`;
+            prompt += `  "args": ["jimeng-mcp-apicore"],\n`;
+            prompt += `  "env": {\n`;
+            prompt += `    "APICORE_API_KEY": "${config.apiKey}",\n`;
+            prompt += `    "JIMENG_OUTPUT_DIR": "${outputDir}"\n`;
+            prompt += `  }\n`;
+            prompt += `}'`;
+
           } else if (mcpName === 'jimeng-volcengine') {
-            const env: any = {};
-            
-            // API Key 是必需的
-            if (config?.apiKey) {
-              env.ARK_API_KEY = config.apiKey;
+            // 确保 API Key 存在
+            if (!config?.apiKey) {
+              socket.emit('mcp:install:result', { success: false, message: '请先输入 API Key' });
+              return;
             }
-            
-            // 输出目录，如果没有提供则使用默认值
-            env.JIMENG_OUTPUT_DIR = config?.outputDir || (process.env.HOME + '/Pictures');
-            
-            configJson = JSON.stringify({
-              command: "uvx",
-              args: ["jimeng-mcp-volcengine"],
-              env: env
-            });
+
+            // 使用用户提供的目录或默认值
+            const outputDir = config.outputDir || '~/Pictures';
+
+            // 构建完整的命令
+            prompt += `claude mcp add-json jimeng-volcengine '{\n`;
+            prompt += `  "command": "uvx",\n`;
+            prompt += `  "args": ["jimeng-mcp-volcengine"],\n`;
+            prompt += `  "env": {\n`;
+            prompt += `    "ARK_API_KEY": "${config.apiKey}",\n`;
+            prompt += `    "JIMENG_OUTPUT_DIR": "${outputDir}"\n`;
+            prompt += `  }\n`;
+            prompt += `}'`;
           }
-          
-          // 执行 claude mcp add-json 命令
-          const command = `claude mcp add-json ${mcpName} '${configJson}'`;
-          await session.execute(command);
-          socket.emit('mcp:install:result', { success: true });
+
+          // 将提示词发送到终端，让 Claude 执行
+          session.write(prompt + '\n');
+
+          // 给用户反馈
+          socket.emit('mcp:install:result', {
+            success: true,
+            message: '配置命令已发送给 Claude，请查看终端执行结果'
+          });
+
+          // 延迟检查状态
+          setTimeout(() => {
+            socket.emit('mcp:check');
+          }, 3000);
         }
       } catch (error: any) {
         socket.emit('mcp:install:result', { success: false, message: error.message });
