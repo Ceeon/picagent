@@ -57,9 +57,10 @@ function collectParameters() {
 }
 
 socket.on('jimeng:command', (command) => {
-    console.log('执行命令:', command);
+    console.log('执行命令(写入终端):', command);
     term.write('\\r\\n🎨 正在生成图片...\\r\\n');
-    term.write(`> ${command}\\r\\n`);
+    // 统一由前端写入终端并回车，避免重复
+    socket.emit('terminal:write', command + '\\r');
 });
 
 socket.on('jimeng:result', (result) => {
@@ -69,10 +70,11 @@ socket.on('jimeng:result', (result) => {
     
     if (result.success) {
         term.write('\\r\\n✅ 图片生成成功！\\r\\n');
-        
-        const imagePathMatch = result.output.match(/(?:saved to|保存到)[\\s:]*([^\\s]+\\.(?:png|jpg|jpeg))/i);
-        if (imagePathMatch) {
-            term.write(`📁 文件位置: ${imagePathMatch[1]}\\r\\n`);
+        if (result.output) {
+            const imagePathMatch = result.output.match(/(?:saved to|保存到)[\\s:]*([^\\s]+\\.(?:png|jpg|jpeg))/i);
+            if (imagePathMatch) {
+                term.write(`📁 文件位置: ${imagePathMatch[1]}\\r\\n`);
+            }
         }
     } else {
         term.write('\\r\\n❌ 生成失败\\r\\n');

@@ -7,7 +7,7 @@ import os from 'os';
 const execAsync = promisify(exec);
 
 export interface MCPConfig {
-  type: 'jimeng-apicore' | 'jimeng-volcengine';
+  type: 'jimeng-apicore' | 'jimeng-volcengine' | 'gemini-apicore';
   apiKey: string;
   outputDir: string;
 }
@@ -112,26 +112,38 @@ export class MCPConfigManager {
    * 构建MCP配置对象
    */
   private buildMCPConfig(config: MCPConfig): any {
+    // 统一使用同一个输出目录
+    const unifiedOutputDir = config.outputDir || path.join(os.homedir(), 'Pictures');
+
     if (config.type === 'jimeng-apicore') {
       return {
-        command: "uvx",
-        args: ["jimeng-mcp-apicore"],
+        command: "npx",
+        args: ["jimeng-apicore-mcp"],
         env: {
           APICORE_API_KEY: config.apiKey,
-          JIMENG_OUTPUT_DIR: config.outputDir || path.join(os.homedir(), 'Pictures')
+          JIMENG_OUTPUT_DIR: unifiedOutputDir
         }
       };
     } else if (config.type === 'jimeng-volcengine') {
       return {
-        command: "uvx",
-        args: ["jimeng-mcp-volcengine"],
+        command: "npx",
+        args: ["jimeng-volcengine-mcp"],
         env: {
           ARK_API_KEY: config.apiKey,
-          JIMENG_OUTPUT_DIR: config.outputDir || path.join(os.homedir(), 'Pictures')
+          JIMENG_OUTPUT_DIR: unifiedOutputDir
+        }
+      };
+    } else if (config.type === 'gemini-apicore') {
+      return {
+        command: "npx",
+        args: ["gemini-apicore-mcp"],
+        env: {
+          APICORE_API_KEY: config.apiKey,
+          OUTPUT_DIR: unifiedOutputDir
         }
       };
     }
-    
+
     throw new Error('未知的MCP类型');
   }
 
@@ -172,6 +184,8 @@ export class MCPConfigManager {
           status.apiKeyValid = !!serverConfig.env?.APICORE_API_KEY;
         } else if (mcpName === 'jimeng-volcengine') {
           status.apiKeyValid = !!serverConfig.env?.ARK_API_KEY;
+        } else if (mcpName === 'gemini-apicore') {
+          status.apiKeyValid = !!serverConfig.env?.APICORE_API_KEY;
         }
       }
       
@@ -196,8 +210,8 @@ export class MCPConfigManager {
       const mcps: string[] = [];
       
       for (const line of lines) {
-        if (line.includes('jimeng-apicore') || line.includes('jimeng-volcengine')) {
-          const match = line.match(/(jimeng-\w+)/);
+        if (line.includes('jimeng-apicore') || line.includes('jimeng-volcengine') || line.includes('gemini-apicore')) {
+          const match = line.match(/(jimeng-\w+|gemini-\w+)/);
           if (match) {
             mcps.push(match[1]);
           }

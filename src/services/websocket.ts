@@ -7,13 +7,37 @@ export function setupWebSocket(io: SocketIOServer): void {
   io.on('connection', (socket: Socket) => {
     console.log(`新客户端连接: ${socket.id}`);
 
-    socket.on('terminal:create', (data: { cols: number; rows: number }) => {
+    socket.on('terminal:create', async (data: { cols: number; rows: number }) => {
       const size: TerminalSize = {
         cols: data.cols || 80,
         rows: data.rows || 30
       };
 
-      const session = terminalManager.createSession(socket.id, size);
+      // 计算首选工作目录：优先全局/服务输出目录，其次环境变量，最后HOME
+      let preferredCwd: string | undefined = undefined;
+      try {
+        const os = require('os');
+        const path = require('path');
+        const fs = require('fs');
+
+        // 从本地配置读取输出目录
+        const localConfigs = await mcpConfigManager.getLocalConfigs();
+        preferredCwd = localConfigs.globalOutputDir
+          || localConfigs['jimeng-apicore']?.outputDir
+          || localConfigs['jimeng-volcengine']?.outputDir
+          || localConfigs['gemini-apicore']?.outputDir
+          || process.env.JIMENG_OUTPUT_DIR
+          || path.join(os.homedir(), 'Pictures');
+
+        // 若目录不存在则回退到HOME
+        if (!preferredCwd || !fs.existsSync(preferredCwd)) {
+          preferredCwd = os.homedir();
+        }
+      } catch {
+        // 忽略错误，使用默认
+      }
+
+      const session = terminalManager.createSession(socket.id, size, preferredCwd);
 
       session.on('data', (data: string) => {
         socket.emit('terminal:data', data);
@@ -58,19 +82,19 @@ export function setupWebSocket(io: SocketIOServer): void {
 
     socket.on('mcp:check', async () => {
       try {
-        // 使用当前会话的终端来执行检测，但不显示命令
-        const session = terminalManager.getSession(socket.id);
-        if (session) {
-          const output = await (session as any).executeSilent('claude mcp list');
-          const statuses = parseMCPStatus(output);
-          socket.emit('mcp:status', statuses);
-        } else {
-          // 如果没有终端会话，使用默认检测
-          const statuses = await mcpDetector.checkAllStatus();
-          socket.emit('mcp:status', statuses);
-        }
+        // 直接使用 mcpDetector，更简单可靠
+        const statuses = await mcpDetector.checkAllStatus();
+        console.log('MCP检测结果:', statuses);
+        socket.emit('mcp:status', statuses);
       } catch (error: any) {
-        socket.emit('mcp:error', { message: error.message });
+        console.error('MCP检测失败:', error);
+        // 发送空状态，让前端显示未安装状态
+        const statuses = [
+          { name: 'jimeng-apicore', installed: false, configured: false, apiKeyValid: false, errorMessage: error.message },
+          { name: 'jimeng-volcengine', installed: false, configured: false, apiKeyValid: false, errorMessage: error.message },
+          { name: 'gemini-apicore', installed: false, configured: false, apiKeyValid: false, errorMessage: error.message }
+        ];
+        socket.emit('mcp:status', statuses);
       }
     });
 
@@ -93,8 +117,8 @@ export function setupWebSocket(io: SocketIOServer): void {
 
             // 构建完整的命令
             prompt += `claude mcp add-json jimeng-apicore '{\n`;
-            prompt += `  "command": "uvx",\n`;
-            prompt += `  "args": ["jimeng-mcp-apicore"],\n`;
+            prompt += `  "command": "npx",\n`;
+            prompt += `  "args": ["jimeng-apicore-mcp"],\n`;
             prompt += `  "env": {\n`;
             prompt += `    "APICORE_API_KEY": "${config.apiKey}",\n`;
             prompt += `    "JIMENG_OUTPUT_DIR": "${outputDir}"\n`;
@@ -113,11 +137,31 @@ export function setupWebSocket(io: SocketIOServer): void {
 
             // 构建完整的命令
             prompt += `claude mcp add-json jimeng-volcengine '{\n`;
-            prompt += `  "command": "uvx",\n`;
-            prompt += `  "args": ["jimeng-mcp-volcengine"],\n`;
+            prompt += `  "command": "npx",\n`;
+            prompt += `  "args": ["jimeng-volcengine-mcp"],\n`;
             prompt += `  "env": {\n`;
             prompt += `    "ARK_API_KEY": "${config.apiKey}",\n`;
             prompt += `    "JIMENG_OUTPUT_DIR": "${outputDir}"\n`;
+            prompt += `  }\n`;
+            prompt += `}'`;
+
+          } else if (mcpName === 'gemini-apicore') {
+            // 确保 API Key 存在
+            if (!config?.apiKey) {
+              socket.emit('mcp:install:result', { success: false, message: '请先输入 API Key' });
+              return;
+            }
+
+            // 使用用户提供的目录或默认值
+            const outputDir = config.outputDir || '~/Pictures';
+
+            // 构建完整的命令
+            prompt += `claude mcp add-json gemini-apicore '{\n`;
+            prompt += `  "command": "npx",\n`;
+            prompt += `  "args": ["gemini-apicore-mcp"],\n`;
+            prompt += `  "env": {\n`;
+            prompt += `    "APICORE_API_KEY": "${config.apiKey}",\n`;
+            prompt += `    "OUTPUT_DIR": "${outputDir}"\n`;
             prompt += `  }\n`;
             prompt += `}'`;
           }
@@ -160,14 +204,18 @@ export function setupWebSocket(io: SocketIOServer): void {
       try {
         // 构建发送给Agent的提示
         const agentPrompt = buildAgentPrompt(params);
+        // 向前端发送状态提示
         socket.emit('jimeng:command', agentPrompt);
         
-        // 将提示直接发送到终端执行
+        // 在终端实际执行：先切换目录（如提供），再输入提示词
+        if (params.dirCmd) {
+          session.write(params.dirCmd + '\n');
+        }
         session.write(agentPrompt + '\n');
         
         socket.emit('jimeng:result', { 
           success: true, 
-          message: '提示词已输入，请在终端按Enter执行' 
+          message: '提示已发送到终端' 
         });
       } catch (error: any) {
         socket.emit('jimeng:error', { message: error.message });
@@ -294,11 +342,20 @@ export function setupWebSocket(io: SocketIOServer): void {
 function buildAgentPrompt(params: any): string {
   const {
     prompt,
-    userRequirements
+    userRequirements,
+    outputDir,
+    dirCmd
   } = params;
 
   // 构建给Agent的专业提示词模板
-  let agentPrompt = `你是一个AI绘画大师，结合风格和用户需求，生成绘图提示词，调用即梦MCP作图\n\n`;
+  let agentPrompt = `你是一个AI绘画大师，结合风格和用户需求，生成绘图提示词，调用即梦MCP作图。\n`;
+  if (outputDir) {
+    agentPrompt += `输出目录: ${outputDir}\n`;
+  }
+  if (dirCmd) {
+    agentPrompt += `先执行目录命令: ${dirCmd}\n`;
+  }
+  agentPrompt += `文件保存约定：将所有生成的文件（包括HTML/CSS/JS/图片）保存到上述输出目录（也是当前工作目录），不要写入应用根目录。必要时可在该目录内新建 html 子目录。\n\n`;
   agentPrompt += `风格：${prompt}\n\n`;
   
   if (userRequirements) {

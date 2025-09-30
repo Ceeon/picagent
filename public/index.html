@@ -45,9 +45,6 @@
             overflow: hidden;
         }
 
-        .terminal-body {
-            height: 600px;
-        }
 
         .drag-active {
             border-color: rgb(59 130 246);
@@ -106,7 +103,14 @@
             position: relative;
         }
 
+        /* 图片库网格容器由 Tailwind 类提供，这里无需额外布局样式 */
+        .results-gallery {}
+
         .results-gallery img {
+            width: 100%;
+            height: auto;
+            display: block; /* 移除行内元素基线空隙，避免底部留白 */
+            border-radius: 0.5rem;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
@@ -114,23 +118,261 @@
             transform: scale(1.05);
             box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         }
+
+        /* 图片库响应式由 Tailwind 栅格类控制 */
+
+        /* 案例卡片基础样式优化 */
+        .case-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            height: auto;
+        }
+
+        .case-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .case-item img {
+            width: 100%;
+            height: auto; /* 保持原始比例 */
+            max-height: 180px; /* 统一缩略图上限，避免过大 */
+            display: block; /* 避免基线空隙造成的底部多出一截 */
+            object-fit: contain;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .case-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+            font-size: 0.95rem;
+            line-height: 1.3;
+            flex-shrink: 0;
+        }
+
+        .case-description {
+            color: #6b7280;
+            line-height: 1.4;
+            font-size: 0.85rem;
+        }
+
+        /* 真正的瀑布流布局 - CSS Columns 方案 */
+        .cases-grid {
+            column-width: 280px;
+            column-gap: 1rem;
+            column-fill: balance;
+        }
+
+        .case-item {
+            break-inside: avoid; /* 防止卡片被列分割 */
+            page-break-inside: avoid; /* 兼容性 */
+            margin-bottom: 1rem;
+            display: inline-block; /* 确保完整性 */
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 现代CSS高度优化 */
+        .app-container {
+            height: 100vh;
+            height: 100dvh; /* 动态视窗高度，支持移动端 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-header {
+            flex-shrink: 0; /* 头部不缩小 */
+        }
+
+        .main-content {
+            flex: 1; /* 自动占据剩余空间 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (min-width: 1024px) {
+            .main-content {
+                flex-direction: row;
+                align-items: flex-start; /* 让子元素从顶部开始，自适应高度 */
+            }
+        }
+
+        /* 左侧案例库区域 */
+        .cases-panel {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (min-width: 1024px) {
+            .cases-panel {
+                flex: 3;
+                border-right: 1px solid #e5e7eb;
+            }
+        }
+
+        /* 右侧终端区域 */
+        .terminal-panel {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        @media (min-width: 1024px) {
+            .terminal-panel {
+                flex: 2;
+                border-top: none;
+            }
+        }
+
+        /* 终端区域优化 */
+        .terminal-container {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-body {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .cases-grid {
+                column-width: 250px;
+                column-gap: 0.75rem;
+            }
+
+            .case-item {
+                padding: 12px;
+                margin-bottom: 0.75rem;
+            }
+
+            .case-item img {
+                height: auto; /* 小屏保持原始比例 */
+                max-height: 120px; /* 小屏上限更小 */
+            }
+
+            .case-title {
+                font-size: 0.9rem;
+            }
+
+            .case-description {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* 平板端优化 */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .cases-grid {
+                column-width: 260px;
+                column-gap: 1rem;
+            }
+
+            .case-item img {
+                height: auto; /* 平板保持原始比例 */
+                max-height: 140px; /* 平板上限 */
+            }
+        }
+
+
+        /* 大屏幕优化 */
+        @media (min-width: 1280px) {
+            .cases-grid {
+                column-width: 300px;
+                column-gap: 1.25rem;
+            }
+
+            .case-item img {
+                height: auto; /* 大屏保持原始比例 */
+                max-height: 180px; /* 大屏上限 */
+            }
+
+            .case-title {
+                font-size: 1rem;
+            }
+
+            .case-description {
+                font-size: 0.875rem;
+            }
+        }
+
+        /* 滚动优化 */
+        .cases-panel {
+            scroll-behavior: smooth;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+
+        .cases-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .cases-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .cases-panel::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .cases-panel::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+        }
+
+        /* 响应式隐藏和显示 */
+        .mobile-hidden {
+            display: none;
+        }
+
+        @media (min-width: 640px) {
+            .mobile-hidden {
+                display: block;
+            }
+        }
+
+        /* 移动端特殊优化 */
+        @media (max-width: 1023px) {
+            .cases-panel {
+                flex: 3; /* 相对权重3 */
+            }
+
+            .terminal-panel {
+                flex: 2; /* 相对权重2 */
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
-    <div class="min-h-screen">
+    <div class="app-container">
         <!-- Header -->
-        <div class="bg-white border-b">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-semibold text-gray-900">Agent × MCP : 即梦工作站</h1>
-                        <p class="text-sm text-gray-500 mt-1">通过 Claude Code 和 MCP 进行智能创作</p>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <span class="text-sm text-gray-600">MCP状态:</span>
-                        <span id="mcp-status-badge" class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">检测中...</span>
-                        <a href="/mcp" class="px-4 py-1.5 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800 transition-colors">
-                            MCP设置
+        <div class="app-header bg-white border-b">
+            <div class="px-4 lg:px-6 py-4">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <h1 class="text-xl lg:text-2xl font-semibold text-gray-900">封面工作站</h1>
+                    <div class="flex items-center space-x-2 lg:space-x-3">
+                        <span class="text-sm text-gray-600 hidden sm:inline">MCP:</span>
+                        <span id="mcp-status-badge" class="px-2 lg:px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">未就绪</span>
+                        <a href="/mcp" class="px-3 lg:px-4 py-1.5 bg-white border border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors text-sm">
+                            ⚙️ 管理
                         </a>
                     </div>
                 </div>
@@ -138,98 +380,107 @@
         </div>
 
         <!-- Main Content -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <!-- Top Section: Case Library + Terminal -->
-            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-                <!-- Left Panel: Agent Case Library (40% - 2 cols) -->
-                <div class="lg:col-span-2 bg-white rounded-lg shadow-sm border">
-                    <div class="p-6">
-                        <div class="flex items-center mb-6">
-                            <span class="text-xl mr-2">🎨</span>
-                            <h2 class="text-lg font-semibold text-gray-900">封面案例库</h2>
+        <div class="main-content">
+            <!-- Left Panel: Cases Library -->
+            <div class="cases-panel">
+                <div class="p-4 lg:p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center">
+                            <span class="text-xl mr-2">📚</span>
+                            <h2 class="text-lg font-semibold text-gray-900">案例库</h2>
                         </div>
-                        
-                        <!-- Case Selection Grid -->
-                        <div id="cases-grid" class="grid grid-cols-2 gap-3 mb-6">
-                            <!-- 案例将通过JavaScript动态生成 -->
+                    </div>
+
+                    <!-- Cases Grid - 响应式网格 -->
+                    <div id="cases-grid" class="cases-grid mb-6">
+                        <!-- Cases will be loaded dynamically -->
+                    </div>
+
+                    <!-- User Requirements -->
+                    <div class="border-t pt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">用户需求描述</label>
+                        <textarea
+                            id="user-requirements"
+                            rows="4"
+                            placeholder="请描述您的具体需求，比如：风格偏好、颜色要求、特殊元素等..."
+                            class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        ></textarea>
+
+                        <div class="flex justify-end mt-4">
+                            <button
+                                id="agent-generate-btn"
+                                class="px-6 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                            >
+                                🎨 生成
+                            </button>
                         </div>
-                        
-                        <!-- User Custom Requirements -->
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">✨ 你的创意需求</label>
-                            <textarea 
-                                id="user-requirements"
-                                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                rows="3"
-                                placeholder="描述你的具体需求，将与选择的案例模板结合..."
-                            ></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Terminal -->
+            <div class="terminal-panel">
+                <div class="p-4 lg:p-6 flex-1 flex flex-col">
+                    <div class="flex items-center mb-4">
+                        <span class="text-xl mr-2">💻</span>
+                        <h2 class="text-lg font-semibold text-gray-900">终端</h2>
+                        <div class="ml-auto flex items-center space-x-2">
+                            <span class="text-xs text-gray-500">Claude</span>
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                         </div>
-                        
-                        
-                        <!-- Generate Button -->
-                        <button id="agent-generate-btn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium shadow-sm">
-                            🎨 生成
+                    </div>
+                    <div class="terminal-container flex-1">
+                        <div class="bg-gray-100 px-4 py-2 flex items-center justify-between border-b border-gray-200">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            </div>
+                            <div class="flex items-center gap-4 min-w-0">
+                                <span class="text-xs text-gray-600 whitespace-nowrap">Claude Terminal</span>
+                                <div class="hidden sm:flex items-center gap-2">
+                                    <input id="global-output-dir-input" type="text" placeholder="/Users/you/Pictures" class="text-xs px-2 py-1 border rounded w-56" />
+                                    <button id="save-global-output-dir" class="text-xs px-2 py-1 border rounded hover:bg-gray-50">保存</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="terminal-body p-2">
+                            <div id="terminal"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Section: Results Gallery -->
+        <div class="bg-white border-t">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center">
+                        <span class="text-xl mr-2">🖼️</span>
+                        <h2 class="text-lg font-semibold text-gray-900">Agent生成结果</h2>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button id="refresh-gallery" class="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 transition-colors">
+                            🔄 刷新
+                        </button>
+                        <button id="open-folder" class="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 transition-colors">
+                            📁 打开文件夹
                         </button>
                     </div>
                 </div>
 
-                <!-- Right Panel: Agent Terminal (60% - 3 cols) -->
-                <div class="lg:col-span-3 bg-white rounded-lg shadow-sm border">
-                    <div class="p-6">
-                        <div class="flex items-center mb-6">
-                            <span class="text-xl mr-2">💻</span>
-                            <h2 class="text-lg font-semibold text-gray-900">Agent执行台</h2>
-                            <div class="ml-auto flex items-center space-x-2">
-                                <span class="text-xs text-gray-500">Claude已启动</span>
-                                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            </div>
-                        </div>
-                        <div class="terminal-container">
-                            <div class="bg-gray-100 px-4 py-2 flex items-center justify-between border-b border-gray-200">
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                                    <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                                </div>
-                                <span class="text-xs text-gray-600">Agent思考过程展示</span>
-                            </div>
-                            <div class="terminal-body p-2">
-                                <div id="terminal"></div>
-                            </div>
-                        </div>
+                <!-- Image Gallery -->
+                <div id="results-gallery" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 results-gallery">
+                    <!-- Results will be loaded here automatically -->
+                    <div class="text-center text-gray-500 col-span-full py-8">
+                        <span class="text-4xl mb-2 block">🎨</span>
+                        <p class="text-sm">生成的结果将自动显示在这里</p>
+                        <p class="text-xs text-gray-400 mt-1">按时间排序，最新的在前</p>
                     </div>
                 </div>
             </div>
-            
-            <!-- Bottom Section: Results Gallery -->
-            <div class="bg-white rounded-lg shadow-sm border">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center">
-                            <span class="text-xl mr-2">🖼️</span>
-                            <h2 class="text-lg font-semibold text-gray-900">Agent生成结果</h2>
-                        </div>
-                        <div class="flex items-center space-x-3">
-                            <button id="refresh-gallery" class="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 transition-colors">
-                                🔄 刷新
-                            </button>
-                            <button id="open-folder" class="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 transition-colors">
-                                📁 打开文件夹
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Image Gallery -->
-                    <div id="results-gallery" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        <!-- Images will be loaded here automatically -->
-                        <div class="text-center text-gray-500 col-span-full py-8">
-                            <span class="text-4xl mb-2 block">🎨</span>
-                            <p class="text-sm">生成的图片将自动显示在这里</p>
-                            <p class="text-xs text-gray-400 mt-1">按时间排序，最新的在前</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        </div>
         </div>
 
         <!-- MCP Manager Modal -->
@@ -263,16 +514,7 @@
                                         获取API Key: <a href="https://api.apicore.ai" target="_blank" class="text-blue-600 hover:underline">https://api.apicore.ai</a>
                                     </p>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">输出目录</label>
-                                    <input 
-                                        type="text" 
-                                        id="apicore-output-dir" 
-                                        placeholder="/Users/yourname/Pictures"
-                                        class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                    <p class="mt-1 text-xs text-gray-500">图片保存位置，留空使用默认目录</p>
-                                </div>
+                                <div class="text-xs text-gray-500">输出目录由首页顶部的“输出目录”统一管理</div>
                                 <div class="flex gap-2 mt-3">
                                     <button onclick="saveMCPConfig('apicore')" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">
                                         保存配置
@@ -309,16 +551,7 @@
                                         获取API Key: <a href="https://console.volcengine.com" target="_blank" class="text-blue-600 hover:underline">https://console.volcengine.com</a>
                                     </p>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">输出目录</label>
-                                    <input 
-                                        type="text" 
-                                        id="volcengine-output-dir" 
-                                        placeholder="/Users/yourname/Pictures"
-                                        class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                    <p class="mt-1 text-xs text-gray-500">图片保存位置，留空使用默认目录</p>
-                                </div>
+                                <div class="text-xs text-gray-500">输出目录由首页顶部的“输出目录”统一管理</div>
                                 <div class="flex gap-2 mt-3">
                                     <button onclick="saveMCPConfig('volcengine')" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">
                                         保存配置
@@ -339,7 +572,7 @@
                         <h5 class="font-medium text-sm text-gray-700 mb-2">📌 配置说明</h5>
                         <ol class="text-xs text-gray-600 space-y-1 list-decimal list-inside">
                             <li>点击"安装/更新"安装对应的MCP</li>
-                            <li>输入API Key和输出目录</li>
+                            <li>输入 API Key（输出目录在首页顶部统一设置）</li>
                             <li>点击"保存配置"保存到本地配置文件</li>
                             <li>点击"测试连接"验证配置是否正确</li>
                             <li>配置成功后即可使用即梦AI生成图片</li>
@@ -387,25 +620,16 @@
         function generateCasesGrid() {
             const coverTemplates = getCoverTemplates(); // 使用最新数据
             const casesGrid = document.getElementById('cases-grid');
-            const colors = [
-                'from-blue-400 to-green-400',
-                'from-purple-400 to-pink-400', 
-                'from-gray-400 to-slate-500',
-                'from-orange-400 to-red-400',
-                'from-indigo-400 to-cyan-400',
-                'from-yellow-400 to-amber-400'
-            ];
             
             let html = '';
             Object.keys(coverTemplates).forEach((id, index) => {
                 const template = coverTemplates[id];
-                const colorClass = colors[index % colors.length];
                 
                 html += `
-                    <div class="case-item cursor-pointer border-2 border-gray-200 rounded-lg p-3 hover:border-blue-500 transition-colors" data-case="${id}">
-                        <div class="bg-gradient-to-br ${colorClass} rounded mb-2 flex items-center justify-center overflow-hidden" style="aspect-ratio: 2.35/1;">
-                            <img src="${template.coverImage}" alt="${template.name}" class="w-full h-full object-contain rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            <span class="text-white text-sm hidden">${id}</span>
+                    <div class="case-item cursor-pointer rounded-lg p-3" data-case="${id}">
+                        <div class="rounded mb-2 flex items-center justify-center">
+                            <img src="${template.coverImage}" alt="${template.name}" class="w-full h-auto object-contain rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <span class="text-sm hidden">${id}</span>
                         </div>
                         <p class="text-xs text-gray-600 text-center">${template.name}</p>
                     </div>
@@ -439,23 +663,12 @@
             generateCasesGrid();
         });
 
-        // Size buttons handling
-        document.querySelectorAll('.size-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.size-btn').forEach(b => {
-                    b.classList.remove('bg-gray-900', 'text-white');
-                    b.classList.add('hover:bg-gray-50');
-                });
-                e.target.classList.remove('hover:bg-gray-50');
-                e.target.classList.add('bg-gray-900', 'text-white');
-            });
-        });
 
         // 防止重复提交的标志
         let isGenerating = false;
         
         // Agent generate button
-        document.getElementById('agent-generate-btn').addEventListener('click', () => {
+        document.getElementById('agent-generate-btn').addEventListener('click', async () => {
             // 防止重复点击
             if (isGenerating) {
                 console.log('正在生成中，请稍候...');
@@ -477,12 +690,29 @@
             btn.disabled = true;
             btn.textContent = '⏳ 生成中...';
             
-            // 直接发送原始数据，让服务器端处理格式
+            // 解析输出目录（从后端解析好的目录获取）
+            let outputDir = '';
+            try {
+                const r = await fetch('/api/output-dir');
+                const j = await r.json();
+                if (j && j.outputDir) {
+                    outputDir = j.outputDir;
+                }
+            } catch (e) {
+                console.warn('无法获取输出目录，将继续执行:', e);
+            }
+
+            // 生成一个目录命令，供Agent执行（提示用途）
+            const dirCmd = outputDir ? `cd \"${outputDir}\"` : '';
+
+            // 发送给后端
             if (window.socket) {
                 window.socket.emit('jimeng:generate', {
-                    prompt: template.prompt || '',  // 只发送选中案例的提示词
+                    prompt: template.prompt || '',
                     case: selectedCase,
-                    userRequirements: userRequirements  // 用户输入的需求
+                    userRequirements: userRequirements,
+                    outputDir,
+                    dirCmd
                 });
             }
             
@@ -500,30 +730,15 @@
             loadGalleryImages();
         });
 
+        // Chat functionality removed - using cases library instead
+
         // Open folder
         document.getElementById('open-folder').addEventListener('click', async () => {
-            // Get output directory from localStorage
-            const mcpConfig = localStorage.getItem('mcp-config');
-            let outputDir = '';
-            
-            if (mcpConfig) {
-                try {
-                    const config = JSON.parse(mcpConfig);
-                    if (config.apicore?.outputDir) {
-                        outputDir = config.apicore.outputDir;
-                    } else if (config.volcengine?.outputDir) {
-                        outputDir = config.volcengine.outputDir;
-                    }
-                } catch (e) {
-                    console.error('Failed to parse MCP config:', e);
-                }
-            }
-            
             try {
                 const response = await fetch('/api/open-folder', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: outputDir })
+                    body: JSON.stringify({})
                 });
                 const result = await response.json();
                 if (!result.success) {
@@ -538,77 +753,96 @@
         async function loadGalleryImages() {
             const gallery = document.getElementById('results-gallery');
             
-            // Get MCP output directory from localStorage
-            const mcpConfig = localStorage.getItem('mcp-config');
-            let outputDir = '';
-            
-            if (mcpConfig) {
-                try {
-                    const config = JSON.parse(mcpConfig);
-                    // 从MCP配置中获取输出目录 - 优先使用apicore，其次是volcengine
-                    if (config.apicore?.outputDir) {
-                        outputDir = config.apicore.outputDir;
-                    } else if (config.volcengine?.outputDir) {
-                        outputDir = config.volcengine.outputDir;
-                    }
-                    console.log('MCP config loaded, outputDir:', outputDir);
-                } catch (e) {
-                    console.error('Failed to parse MCP config:', e);
-                }
-            }
-            
             try {
-                const response = await fetch(`/api/gallery?outputDir=${encodeURIComponent(outputDir)}`);
+                const response = await fetch(`/api/gallery`);
                 const result = await response.json();
-                
-                if (result.success && result.images.length > 0) {
+                const files = result.files || [];
+
+                // 显示错误信息（success 为 false）
+                if (result && result.success === false) {
+                    console.warn('Gallery error:', result.error, 'outputDir:', result.outputDir);
+                    gallery.innerHTML = `
+                        <div class="text-center text-gray-500 py-8 col-span-full">
+                            <span class="text-4xl mb-2 block">⚠️</span>
+                            <p class="text-sm">无法加载结果</p>
+                            <p class="text-xs text-gray-400 mt-1">${result.error || '未知错误'}</p>
+                            <p class="text-xs text-gray-400 mt-2">输出目录: ${result.outputDir || '未配置'}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (files.length > 0) {
                     gallery.innerHTML = '';
                     gallery.className = 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 results-gallery';
-                    
-                    // 显示图片
-                    result.images.forEach(image => {
-                        const imgContainer = document.createElement('div');
-                        imgContainer.className = 'relative group cursor-pointer';
-                        
-                        const img = document.createElement('img');
-                        // Add outputDir parameter to image URL
-                        img.src = `${image.url}${image.url.includes('?') ? '&' : '?'}outputDir=${encodeURIComponent(outputDir)}`;
-                        img.alt = image.name;
-                        img.className = 'w-full h-32 object-contain rounded-lg bg-gray-50';
-                        img.loading = 'lazy';
-                        
-                        // 添加时间标签
+
+                    // 显示文件（图片或HTML）
+                    files.forEach(item => {
+                        // 统一容器
+                        const container = document.createElement('div');
+                        container.className = 'relative group cursor-pointer';
+
+                        if (item.type === 'image') {
+                            const img = document.createElement('img');
+                            img.src = item.url;
+                            img.alt = item.name;
+                            img.className = 'w-full object-contain rounded-lg';
+                            img.loading = 'lazy';
+                            container.appendChild(img);
+                        } else if (item.type === 'html') {
+                            // HTML 文件卡片样式
+                            const card = document.createElement('div');
+                            card.className = 'w-full rounded-lg border border-gray-200 p-3 flex items-center justify-between hover:border-blue-400 transition-colors bg-white';
+
+                            const left = document.createElement('div');
+                            left.className = 'flex items-center space-x-2 overflow-hidden';
+                            const icon = document.createElement('span');
+                            icon.textContent = '🌐';
+                            const name = document.createElement('span');
+                            name.className = 'text-sm text-gray-700 truncate';
+                            name.textContent = item.name;
+                            left.appendChild(icon);
+                            left.appendChild(name);
+
+                            const openBtn = document.createElement('button');
+                            openBtn.className = 'text-xs px-2 py-1 border rounded hover:bg-gray-50';
+                            openBtn.textContent = '打开';
+
+                            card.appendChild(left);
+                            card.appendChild(openBtn);
+                            container.appendChild(card);
+
+                            // 点击打开
+                            container.addEventListener('click', () => {
+                                window.open(item.url, '_blank');
+                            });
+                        }
+
+                        // 时间标签
                         const timeLabel = document.createElement('div');
                         timeLabel.className = 'absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity';
-                        const date = new Date(image.mtime);
-                        timeLabel.textContent = date.toLocaleString('zh-CN', { 
-                            month: 'numeric', 
+                        const date = new Date(item.mtime);
+                        timeLabel.textContent = date.toLocaleString('zh-CN', {
+                            month: 'numeric',
                             day: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit'
                         });
-                        
-                        imgContainer.appendChild(img);
-                        imgContainer.appendChild(timeLabel);
-                        gallery.appendChild(imgContainer);
-                        
-                        // 点击查看大图
-                        imgContainer.addEventListener('click', () => {
-                            window.open(image.url + (image.url.includes('?') ? '&' : '?') + 'outputDir=' + encodeURIComponent(outputDir), '_blank');
-                        });
+                        container.appendChild(timeLabel);
+                        gallery.appendChild(container);
                     });
                     
                     // 显示输出目录信息
                     const dirInfo = document.createElement('div');
-                    dirInfo.className = 'col-span-full text-center text-xs text-gray-500 mt-4';
-                    dirInfo.textContent = `图片目录: ${result.outputDir}`;
+                    dirInfo.className = 'text-center text-xs text-gray-500 mt-4 col-span-full';
+                    dirInfo.textContent = `输出目录: ${result.outputDir}`;
                     gallery.appendChild(dirInfo);
-                } else if (result.images && result.images.length === 0) {
+                } else if (result.files && result.files.length === 0) {
                     gallery.innerHTML = `
-                        <div class="text-center text-gray-500 col-span-full py-8">
+                        <div class="text-center text-gray-500 py-8 col-span-full">
                             <span class="text-4xl mb-2 block">🎨</span>
-                            <p class="text-sm">暂无生成的图片</p>
-                            <p class="text-xs text-gray-400 mt-1">生成的图片将自动显示在这里</p>
+                            <p class="text-sm">暂无生成的结果</p>
+                            <p class="text-xs text-gray-400 mt-1">生成的结果将自动显示在这里</p>
                             <p class="text-xs text-gray-400 mt-2">输出目录: ${result.outputDir || '未配置'}</p>
                         </div>
                     `;
@@ -616,7 +850,7 @@
             } catch (error) {
                 console.error('加载图片失败:', error);
                 gallery.innerHTML = `
-                    <div class="text-center text-gray-500 col-span-full py-8">
+                    <div class="text-center text-gray-500 py-8 col-span-full">
                         <span class="text-4xl mb-2 block">❌</span>
                         <p class="text-sm">加载图片失败</p>
                         <p class="text-xs text-gray-400 mt-1">${error.message}</p>
@@ -624,12 +858,56 @@
                 `;
             }
         }
-        
         // 页面加载时加载图片
+        async function updateOutputDirDisplay() {
+            try {
+                const r = await fetch('/api/output-dir');
+                const j = await r.json();
+                const input = document.getElementById('global-output-dir-input');
+                if (input) {
+                    input.value = (j && j.sources && j.sources.configOutputDir) ? j.sources.configOutputDir : (j.outputDir || '');
+                    input.title = input.value;
+                }
+            } catch {}
+        }
+
         loadGalleryImages();
+        updateOutputDirDisplay();
         
         // Auto-refresh gallery every 10 seconds
-        setInterval(loadGalleryImages, 10000);
+        setInterval(() => { loadGalleryImages(); updateOutputDirDisplay(); }, 10000);
+
+        // 保存全局输出目录
+        const saveBtn = document.getElementById('save-global-output-dir');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async () => {
+                try {
+                    const input = document.getElementById('global-output-dir-input');
+                    const outputDir = input.value.trim();
+                    const res = await fetch('/api/output-dir', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ outputDir })
+                    });
+
+                    const ct = res.headers.get('content-type') || '';
+                    let j;
+                    if (ct.includes('application/json')) {
+                        j = await res.json();
+                    } else {
+                        const t = await res.text();
+                        throw new Error(`服务器返回非JSON: ${t.slice(0, 120)}...`);
+                    }
+
+                    if (!j.success) throw new Error(j.error || '保存失败');
+                    await updateOutputDirDisplay();
+                    await loadGalleryImages();
+                } catch (e) {
+                    console.error('保存输出目录失败:', e);
+                    alert('保存输出目录失败: ' + (e.message || e));
+                }
+            });
+        }
     </script>
 </body>
 </html>

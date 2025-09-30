@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as os from 'os';
 
 const execAsync = promisify(exec);
 
@@ -12,70 +13,97 @@ export interface MCPStatus {
 }
 
 export class MCPDetector {
-  private mcpList: string[] = ['jimeng-apicore', 'jimeng-volcengine'];
+  private mcpList: string[] = ['jimeng-apicore', 'jimeng-volcengine', 'gemini-apicore'];
+  private cache: { [key: string]: { status: MCPStatus; timestamp: number } } = {};
+  private cacheTimeout = 5000; // 5秒缓存
 
-  async checkAllStatus(): Promise<MCPStatus[]> {
+  async checkAllStatus(forceRefresh: boolean = false): Promise<MCPStatus[]> {
     const results: MCPStatus[] = [];
-    
+
     for (const mcp of this.mcpList) {
-      const status = await this.checkStatus(mcp);
+      const status = await this.checkStatus(mcp, forceRefresh);
       results.push(status);
     }
-    
+
     return results;
   }
 
-  async checkStatus(mcpName: string): Promise<MCPStatus> {
-    const status: MCPStatus = {
-      name: mcpName,
-      installed: false,
-      configured: false,
-      apiKeyValid: false
-    };
-
+  async checkStatus(mcpName: string, forceRefresh: boolean = false): Promise<MCPStatus> {
     try {
-      // 增加超时时间，确保获取完整输出
-      const { stdout } = await execAsync('claude mcp list', { 
-        timeout: 5000,
-        maxBuffer: 1024 * 1024 
+      // 使用完整的用户环境执行命令，确保与用户终端环境一致
+      const { stdout } = await execAsync('claude mcp list', {
+        env: {
+          ...process.env,                           // 继承现有环境变量
+          HOME: os.homedir(),                       // 确保使用当前用户主目录
+          USER: os.userInfo().username              // 确保使用当前用户名
+        },
+        cwd: os.homedir()                          // 在用户主目录执行命令
       });
-      
-      // Check if MCP is listed - look for exact match at line start
+
+      console.log(`检测 ${mcpName}，claude mcp list 输出:`, stdout);
+
+      // 直接检查：如果输出中根本没有这个MCP名称，说明未安装
+      if (!stdout.includes(mcpName)) {
+        return {
+          name: mcpName,
+          installed: false,
+          configured: false,
+          apiKeyValid: false
+        };
+      }
+
+      // 如果有这个名称，再检查是否Connected
       const lines = stdout.split('\n');
-      
       for (const line of lines) {
-        // Check if line starts with the MCP name followed by a colon
-        if (line.startsWith(`${mcpName}:`)) {
-          status.installed = true;
-          
-          // Check if it's connected
-          if (line.includes('✓ Connected') || line.includes('Connected')) {
-            status.configured = true;
-            status.apiKeyValid = true;
-          }
-          break;
+        if (line.includes(mcpName)) {
+          const isConnected = line.toLowerCase().includes('connected');
+          console.log(`${mcpName} 状态行: "${line}", Connected: ${isConnected}`);
+
+          return {
+            name: mcpName,
+            installed: true,
+            configured: isConnected,
+            apiKeyValid: isConnected
+          };
         }
       }
-    } catch (error: any) {
-      status.errorMessage = error.message;
-      
-      if (error.message.includes('command not found')) {
-        status.errorMessage = 'Claude CLI 未安装';
-      }
-    }
 
-    return status;
+      // 如果找到名称但没找到对应行，认为已安装但未配置
+      return {
+        name: mcpName,
+        installed: true,
+        configured: false,
+        apiKeyValid: false
+      };
+
+    } catch (error: any) {
+      console.error(`检测 ${mcpName} 时出错:`, error.message);
+      return {
+        name: mcpName,
+        installed: false,
+        configured: false,
+        apiKeyValid: false,
+        errorMessage: error.message
+      };
+    }
   }
 
   private async checkConfiguration(mcpName: string): Promise<{ configured: boolean; apiKeyValid: boolean }> {
     try {
       // claude mcp inspect 命令可能不存在，我们直接从list结果判断
-      const { stdout } = await execAsync('claude mcp list');
-      
+      const { stdout } = await execAsync('claude mcp list', {
+        env: {
+          ...process.env,
+          HOME: os.homedir(),
+          USER: os.userInfo().username
+        },
+        cwd: os.homedir()
+      });
+
       if (stdout.includes(mcpName) && stdout.includes('Connected')) {
         return { configured: true, apiKeyValid: true };
       }
-      
+
       return { configured: false, apiKeyValid: false };
     } catch {
       return { configured: false, apiKeyValid: false };
@@ -90,15 +118,22 @@ export class MCPDetector {
       if (mcpName === 'jimeng-apicore') {
         // 使用add-json命令添加jimeng-apicore配置
         const config = {
-          command: "uvx",
-          args: ["jimeng-mcp-apicore"]
+          command: "npx",
+          args: ["jimeng-apicore-mcp"]
         };
         command = `claude mcp add-json ${mcpName} '${JSON.stringify(config)}'`;
       } else if (mcpName === 'jimeng-volcengine') {
         // 使用add-json命令添加jimeng-volcengine配置
         const config = {
-          command: "uvx",
-          args: ["jimeng-mcp-volcengine"]
+          command: "npx",
+          args: ["jimeng-volcengine-mcp"]
+        };
+        command = `claude mcp add-json ${mcpName} '${JSON.stringify(config)}'`;
+      } else if (mcpName === 'gemini-apicore') {
+        // 使用add-json命令添加gemini-apicore配置
+        const config = {
+          command: "npx",
+          args: ["gemini-apicore-mcp"]
         };
         command = `claude mcp add-json ${mcpName} '${JSON.stringify(config)}'`;
       } else {

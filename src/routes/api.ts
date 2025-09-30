@@ -44,17 +44,29 @@ router.get('/covers', (req, res) => {
   }
 });
 
-// GET /api/gallery - 获取生成的图片列表
+// GET /api/gallery - 获取生成的文件列表（图片 + HTML）
 router.get('/gallery', async (req, res) => {
   try {
     const fs = require('fs').promises;
     const path = require('path');
     const os = require('os');
     
-    // 从查询参数获取输出目录
-    let outputDir = req.query.outputDir as string;
-    
-    // 如果没有提供outputDir或为空，使用默认值
+    // 从查询参数 / 本地配置 / 环境变量 解析输出目录
+    let outputDir = (req.query.outputDir as string) || '';
+    if (!outputDir) {
+      try {
+        const localConfigPath = join(process.cwd(), 'config', 'mcp-config.json');
+        if (existsSync(localConfigPath)) {
+          const cfgRaw = readFileSync(localConfigPath, 'utf8');
+          const cfg = JSON.parse(cfgRaw);
+          outputDir = cfg.globalOutputDir
+            || cfg['jimeng-apicore']?.outputDir
+            || cfg['jimeng-volcengine']?.outputDir
+            || cfg['gemini-apicore']?.outputDir
+            || '';
+        }
+      } catch {}
+    }
     if (!outputDir) {
       outputDir = process.env.JIMENG_OUTPUT_DIR || path.join(os.homedir(), 'Pictures');
     }
@@ -64,23 +76,29 @@ router.get('/gallery', async (req, res) => {
       return res.json({ 
         success: false, 
         error: `目录不存在: ${outputDir}`,
-        images: [] 
+        files: [],
+        outputDir
       });
     }
     
-    // 读取目录中的图片文件
+    // 读取目录中的相关文件（图片、HTML）
     const files = await fs.readdir(outputDir);
-    const imageFiles = files
-      .filter((file: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(file))
-      .map((file: string) => ({
-        name: file,
-        path: path.join(outputDir, file),
-        url: `/api/image/${file}`
-      }));
+    const items = files
+      .filter((file: string) => /\.(jpg|jpeg|png|gif|webp|html|htm)$/i.test(file))
+      .map((file: string) => {
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file);
+        const isHtml = /\.(html|htm)$/i.test(file);
+        return {
+          name: file,
+          path: path.join(outputDir, file),
+          url: isImage ? `/api/image/${file}` : `/api/file/${file}`,
+          type: isImage ? 'image' : (isHtml ? 'html' : 'other')
+        };
+      });
     
     // 按修改时间排序（最新的在前）
     const filesWithStats = await Promise.all(
-      imageFiles.map(async (file: any) => {
+      items.map(async (file: any) => {
         const stats = await fs.stat(file.path);
         return {
           ...file,
@@ -94,7 +112,7 @@ router.get('/gallery', async (req, res) => {
     res.json({ 
       success: true, 
       outputDir,
-      images: filesWithStats.slice(0, 50) // 只返回最新的50张
+      files: filesWithStats.slice(0, 100) // 返回最新的最多100个文件
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -107,10 +125,22 @@ router.get('/image/:filename', async (req, res) => {
     const path = require('path');
     const os = require('os');
     
-    // 从查询参数获取输出目录
-    let outputDir = req.query.outputDir as string;
-    
-    // 如果没有提供outputDir或为空，使用默认值
+    // 从查询参数 / 本地配置 / 环境变量 解析输出目录
+    let outputDir = (req.query.outputDir as string) || '';
+    if (!outputDir) {
+      try {
+        const localConfigPath = join(process.cwd(), 'config', 'mcp-config.json');
+        if (existsSync(localConfigPath)) {
+          const cfgRaw = readFileSync(localConfigPath, 'utf8');
+          const cfg = JSON.parse(cfgRaw);
+          outputDir = cfg.globalOutputDir
+            || cfg['jimeng-apicore']?.outputDir
+            || cfg['jimeng-volcengine']?.outputDir
+            || cfg['gemini-apicore']?.outputDir
+            || '';
+        }
+      } catch {}
+    }
     if (!outputDir) {
       outputDir = process.env.JIMENG_OUTPUT_DIR || path.join(os.homedir(), 'Pictures');
     }
@@ -127,25 +157,152 @@ router.get('/image/:filename', async (req, res) => {
   }
 });
 
+// GET /api/file/:filename - 获取任意文件（例如HTML）
+router.get('/file/:filename', async (req, res) => {
+  try {
+    const path = require('path');
+    const os = require('os');
+
+    // 从查询参数 / 本地配置 / 环境变量 解析输出目录
+    let outputDir = (req.query.outputDir as string) || '';
+    if (!outputDir) {
+      try {
+        const localConfigPath = join(process.cwd(), 'config', 'mcp-config.json');
+        if (existsSync(localConfigPath)) {
+          const cfgRaw = readFileSync(localConfigPath, 'utf8');
+          const cfg = JSON.parse(cfgRaw);
+          outputDir = cfg.globalOutputDir
+            || cfg['jimeng-apicore']?.outputDir
+            || cfg['jimeng-volcengine']?.outputDir
+            || cfg['gemini-apicore']?.outputDir
+            || '';
+        }
+      } catch {}
+    }
+    if (!outputDir) {
+      outputDir = process.env.JIMENG_OUTPUT_DIR || path.join(os.homedir(), 'Pictures');
+    }
+
+    const filePath = path.join(outputDir, req.params.filename);
+    if (!existsSync(filePath)) {
+      return res.status(404).json({ error: '文件不存在' });
+    }
+
+    res.sendFile(filePath);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/output-dir - 获取解析后的输出目录及来源
+router.get('/output-dir', (req, res) => {
+  try {
+    const os = require('os');
+    const path = require('path');
+    let configOutputDir: string | undefined;
+
+    try {
+      const localConfigPath = join(process.cwd(), 'config', 'mcp-config.json');
+      if (existsSync(localConfigPath)) {
+        const cfgRaw = readFileSync(localConfigPath, 'utf8');
+        const cfg = JSON.parse(cfgRaw);
+        configOutputDir = cfg.globalOutputDir
+          || cfg['jimeng-apicore']?.outputDir
+          || cfg['jimeng-volcengine']?.outputDir
+          || cfg['gemini-apicore']?.outputDir
+          || undefined;
+      }
+    } catch {}
+
+    const envOutputDir = process.env.JIMENG_OUTPUT_DIR;
+    const fallback = path.join(os.homedir(), 'Pictures');
+    const outputDir = configOutputDir || envOutputDir || fallback;
+
+    res.json({
+      success: true,
+      outputDir,
+      sources: {
+        configOutputDir: configOutputDir || null,
+        envOutputDir: envOutputDir || null,
+        fallback
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/output-dir - 设置全局输出目录
+router.post('/output-dir', async (req, res) => {
+  try {
+    const fsP = require('fs').promises;
+    const path = require('path');
+    const desired = (req.body && req.body.outputDir) ? String(req.body.outputDir) : '';
+    if (!desired) {
+      return res.status(400).json({ success: false, error: '缺少 outputDir' });
+    }
+
+    // 确保目录存在
+    await fsP.mkdir(desired, { recursive: true }).catch(() => {});
+
+    const configDir = join(process.cwd(), 'config');
+    const configPath = join(configDir, 'mcp-config.json');
+    await fsP.mkdir(configDir, { recursive: true });
+
+    let cfg: any = {};
+    if (existsSync(configPath)) {
+      try {
+        cfg = JSON.parse(readFileSync(configPath, 'utf8')) || {};
+      } catch {}
+    }
+    cfg.globalOutputDir = desired;
+
+    writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf8');
+    res.json({ success: true, outputDir: desired });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST /api/open-folder - 打开文件夹
 router.post('/open-folder', (req, res) => {
   try {
-    const { path: folderPath } = req.body;
+    const { path: folderPath } = req.body || {};
     const { exec } = require('child_process');
     
     // 根据操作系统使用不同的命令
     const platform = process.platform;
     let command = '';
     
+    // 解析输出目录优先级
+    let targetPath = folderPath;
+    if (!targetPath) {
+      try {
+        const localConfigPath = join(process.cwd(), 'config', 'mcp-config.json');
+        if (existsSync(localConfigPath)) {
+          const cfgRaw = readFileSync(localConfigPath, 'utf8');
+          const cfg = JSON.parse(cfgRaw);
+          targetPath = cfg.globalOutputDir
+            || cfg['jimeng-apicore']?.outputDir
+            || cfg['jimeng-volcengine']?.outputDir
+            || cfg['gemini-apicore']?.outputDir
+            || '';
+        }
+      } catch {}
+    }
+    if (!targetPath) {
+      targetPath = process.env.JIMENG_OUTPUT_DIR || undefined;
+    }
+    
     if (platform === 'darwin') {
       // macOS
-      command = `open "${folderPath || '/Users/chengfeng/Pictures'}"`;
+      command = `open "${targetPath || '/Users/chengfeng/Pictures'}"`;
     } else if (platform === 'win32') {
       // Windows
-      command = `explorer "${folderPath || process.env.USERPROFILE + '\\Pictures'}"`;
+      command = `explorer "${targetPath || process.env.USERPROFILE + '\\Pictures'}"`;
     } else {
       // Linux
-      command = `xdg-open "${folderPath || process.env.HOME + '/Pictures'}"`;
+      command = `xdg-open "${targetPath || process.env.HOME + '/Pictures'}"`;
     }
     
     exec(command, (error: any) => {

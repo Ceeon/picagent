@@ -44,14 +44,9 @@ function updateMCPStatusDisplay(statuses) {
         statusBadge.textContent = '✅ 已就绪';
         generateBtn.disabled = false;
         generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-    } else if (apicoreStatus?.installed || volcengineStatus?.installed) {
-        statusBadge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700';
-        statusBadge.textContent = '⚠️ 需配置';
-        generateBtn.disabled = true;
-        generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
     } else {
-        statusBadge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700';
-        statusBadge.textContent = '❌ 未安装';
+        statusBadge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600';
+        statusBadge.textContent = '未就绪';
         generateBtn.disabled = true;
         generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
     }

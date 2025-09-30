@@ -35,14 +35,22 @@ mcpViewConfigBtn.addEventListener('click', () => {
 });
 
 // Save MCP configuration
-function saveMCPConfig(type) {
+async function saveMCPConfig(type) {
     const apiKeyInput = document.getElementById(`${type}-api-key`);
-    const outputDirInput = document.getElementById(`${type}-output-dir`);
+    // 全局输出目录：从后端获取
+    let outputDir = '';
+    try {
+        const r = await fetch('/api/output-dir');
+        const j = await r.json();
+        outputDir = j && j.outputDir ? j.outputDir : '';
+    } catch (e) {
+        console.warn('无法获取全局输出目录，将使用默认目录');
+    }
     
     const config = {
         type: type === 'apicore' ? 'jimeng-apicore' : 'jimeng-volcengine',
         apiKey: apiKeyInput.value,
-        outputDir: outputDirInput.value
+        outputDir: outputDir
     };
     
     if (!config.apiKey) {
@@ -50,7 +58,7 @@ function saveMCPConfig(type) {
         return;
     }
     
-    // Store locally
+    // Store locally（仅API Key，本页不再管理目录）
     mcpConfigs[type] = {
         apiKey: config.apiKey,
         outputDir: config.outputDir
@@ -134,25 +142,20 @@ socket.on('mcp:status', (statuses) => {
     if (hasValidMCP) {
         statusBadge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700';
         statusBadge.textContent = '✅ 已就绪';
-    } else if (apicoreStatus?.installed || volcengineStatus?.installed) {
-        statusBadge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700';
-        statusBadge.textContent = '⚠️ 需配置';
     } else {
-        statusBadge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700';
-        statusBadge.textContent = '❌ 未安装';
+        statusBadge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600';
+        statusBadge.textContent = '未就绪';
     }
 });
 
 socket.on('mcp:config-loaded', (configs) => {
     if (configs.apicore) {
         document.getElementById('apicore-api-key').value = configs.apicore.apiKey || '';
-        document.getElementById('apicore-output-dir').value = configs.apicore.outputDir || '';
         mcpConfigs.apicore = configs.apicore;
     }
     
     if (configs.volcengine) {
         document.getElementById('volcengine-api-key').value = configs.volcengine.apiKey || '';
-        document.getElementById('volcengine-output-dir').value = configs.volcengine.outputDir || '';
         mcpConfigs.volcengine = configs.volcengine;
     }
 });
